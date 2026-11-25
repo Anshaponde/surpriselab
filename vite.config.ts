@@ -8,9 +8,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          charts: ['recharts'],
-          math: ['katex'],
+        manualChunks(id) {
+          if (id.includes('node_modules/recharts')) return 'charts';
+          if (id.includes('node_modules/katex')) return 'math';
+          if (id.includes('@huggingface/transformers') || id.includes('onnxruntime')) {
+            return 'transformers';
+          }
+          return undefined;
         },
       },
     },
