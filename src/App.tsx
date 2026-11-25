@@ -1,122 +1,102 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Footer } from './components/Footer';
+import { Header } from './components/Header';
+import { Hero } from './components/Hero';
+import { MathSection } from './components/MathSection';
+import { MetricsDashboard } from './components/MetricsDashboard';
+import { ProbabilityPlayground } from './components/ProbabilityPlayground';
+import {
+  buildTokenItems,
+  computeMetrics,
+  tokenizeText,
+  type InitMode,
+  type TokenItem,
+} from './lib/perplexity';
 
-function App() {
-  const [count, setCount] = useState(0)
+const RealModelSection = lazy(() => import('./components/RealModelSection'));
+
+const DEFAULT_SENTENCE = 'Heavy clouds gathered before the evening storm';
+
+export function App() {
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = window.localStorage.getItem('surpriselab-theme');
+    return saved ? saved === 'dark' : true;
+  });
+
+  const [sentence, setSentence] = useState<string>(DEFAULT_SENTENCE);
+  const [initMode, setInitMode] = useState<InitMode>('gradient');
+  const [tokens, setTokens] = useState<TokenItem[]>(() =>
+    buildTokenItems(tokenizeText(DEFAULT_SENTENCE), 'gradient'),
+  );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark', isDark);
+    window.localStorage.setItem('surpriselab-theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const metrics = useMemo(() => computeMetrics(tokens), [tokens]);
+
+  const handleSendFromModelToPlayground = (
+    modelSentence: string,
+    modelTokens: TokenItem[],
+  ) => {
+    setSentence(modelSentence);
+    setTokens(modelTokens);
+    const el = document.getElementById('playground');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div className="relative min-h-screen">
+      <div className="aurora-backdrop" aria-hidden="true" />
+      <div className="aurora-grid" aria-hidden="true" />
+
+      <Header isDark={isDark} onToggleTheme={() => setIsDark((d) => !d)} />
+
+      <main className="mx-auto max-w-7xl space-y-14 px-4 pb-12 sm:px-6 lg:px-8">
+        <Hero />
+
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <MetricsDashboard metrics={metrics} />
+          <ProbabilityPlayground
+            sentence={sentence}
+            tokens={tokens}
+            initMode={initMode}
+            metrics={metrics}
+            isDark={isDark}
+            onSentenceChange={(nextSentence, nextTokens) => {
+              setSentence(nextSentence);
+              setTokens(nextTokens);
+            }}
+            onTokensChange={setTokens}
+            onInitModeChange={(mode, nextTokens) => {
+              setInitMode(mode);
+              setTokens(nextTokens);
+            }}
+          />
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+
+        <Suspense
+          fallback={
+            <section
+              id="real-model"
+              className="aurora-card rounded-2xl p-8 text-center text-sm text-slate-500 dark:text-slate-400"
+            >
+              Preparing Real AI Model module…
+            </section>
+          }
         >
-          Count is {count}
-        </button>
-      </section>
+          <RealModelSection onSendToPlayground={handleSendFromModelToPlayground} />
+        </Suspense>
 
-      <div className="ticks"></div>
+        <MathSection />
+      </main>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <Footer />
+    </div>
+  );
 }
 
-export default App
+export default App;
